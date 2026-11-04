@@ -1,0 +1,19 @@
+# Build output
+build/
+*.uf2
+*.elf
+*.bin
+*.hex
+*.map
+*.dis
+
+# Python
+__pycache__/
+.pytest_cache/
+.venv/
+
+# OS clutter
+.DS_Store
+Thumbs.db
+
+/.vscode/
