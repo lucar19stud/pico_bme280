@@ -1,78 +1,28 @@
 #include <stdio.h>
 #include "pico/stdlib.h"
+#include "bme280.h"
 
-#define BUTTON_PIN 15
-#define LED_PIN 14
-#define DEBOUNCE_MS 10
-#define DEBOUNCE_MS_DUMMY (1000*60)
-
-static volatile bool button_pressed = false;
-static volatile uint32_t isr_counter = 0;
-
-static int64_t debounce(alarm_id_t, void *user_data) {
-    if (!gpio_get(BUTTON_PIN)) {
-        button_pressed = true;
-    }
-
-    // activates irs for the next press
-    gpio_set_irq_enabled(BUTTON_PIN, GPIO_IRQ_EDGE_FALL, true);
-    // alarm only once. 
-    return 0;
-}
-
-static void button_isr(uint gpio, uint32_t events) {
-    // Button pin 15 AND falling edge
-    if (gpio == BUTTON_PIN && (events & GPIO_IRQ_EDGE_FALL)) {
-        isr_counter++;
-
-        // deactivates isr for pin 15
-        gpio_set_irq_enabled(BUTTON_PIN, GPIO_IRQ_EDGE_FALL, false);
-        
-        // calls `debounce` after alarm 
-        if (add_alarm_in_ms(DEBOUNCE_MS, debounce, NULL, true) < 0) {
-            // No alarm slot: re-enable irs so the button never goes dead
-            gpio_set_irq_enabled(BUTTON_PIN, GPIO_IRQ_EDGE_FALL, true);
-        }
-        
-    }
-}
-
-
-// static int64_t dummy(alarm_id_t, void *user_data) {
-//     return 0;
-// }
+#define I2C_PORT  i2c0
+#define I2C_SDA   4
+#define I2C_SCL   5
+#define I2C_BAUD  (100 * 1000)   // standard mode: easy to capture with logic analyzer
 
 int main()
 {
     stdio_init_all();
+    sleep_ms(5000);
 
-    gpio_init(LED_PIN);
-    gpio_set_dir(LED_PIN, GPIO_OUT);
+    uint baud = i2c_init(I2C_PORT, I2C_BAUD);
+    gpio_set_function(I2C_SDA, GPIO_FUNC_I2C);
+    gpio_set_function(I2C_SCL, GPIO_FUNC_I2C);
+    printf("i2C baud: %u Hz\n", baud);
 
-    gpio_init(BUTTON_PIN);
-    gpio_set_dir(BUTTON_PIN, GPIO_IN);
-    gpio_pull_up(BUTTON_PIN);
-
-    gpio_set_irq_enabled_with_callback(BUTTON_PIN, GPIO_IRQ_EDGE_FALL, true, &button_isr);
-
-    uint32_t presses = 0;
-    bool led_on = false;
-
-    // sleep_ms(2000);
-    // int n = 0;
-    // while (add_alarm_in_ms(DEBOUNCE_MS_DUMMY, dummy, NULL, true) > 0) {
-    //     n++;
-    // }
-    // sleep_ms(5000);
-    // printf("alarm pool full after %d dummy alarms\n", n);
+    bme280_t bme = {.i2c = I2C_PORT, .addr = BME280_ADDR_LOW};
 
     while (true) {
-        if(button_pressed) {
-            button_pressed = false;
-            presses++;
-            led_on = !led_on;
-            gpio_put(LED_PIN, led_on);
-            printf("press %lu, raw edges %lu\n", (unsigned long)presses, (unsigned long)isr_counter);
-        }
+        uint8_t id = 0;
+        int err = bme280_check_chip_id(&bme, &id);
+        printf("chip id: 0x%02X  err: %d\n", id, err);
+        sleep_ms(1000);
     }
 }

@@ -35,7 +35,7 @@ pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
 
-add_executable(c_pico c_pico.c )
+add_executable(c_pico c_pico.c bme280.c)
 
 pico_set_program_name(c_pico "c_pico")
 pico_set_program_version(c_pico "0.1")
@@ -47,6 +47,7 @@ pico_enable_stdio_usb(c_pico 1)
 # Add the standard library to the build
 target_link_libraries(c_pico
         pico_stdlib
+        hardware_i2c
         pico_cyw43_arch_none)
 
 # Add the standard include files to the build
