@@ -1,0 +1,37 @@
+# AP2 - Button interrupt WITHOUT debounce (baseline)
+# Date:      2026-11-05
+# Firmware:  falling-edge IRQ on GPIO 15, flag + raw edge counter, no debounce
+# Setup:     button GPIO 15 -> GND, internal pull-up; LED GPIO 14 via 330 R
+# Procedure: 20 button presses, serial output via USB-CDC
+# Expected:  press == 20
+# Result:    FAIL - 24 counts for 20 presses (4 false counts)
+# Note:      root cause found later with logic analyzer: contact bounce on
+#            RELEASE produces extra falling edges (~0.42 ms burst, 3 edges).
+# Note:      counter runs since reset; precondition "reset right before test"
+#            was not strictly enforced in this run.
+
+---- Opened the serial port /dev/tty.usbmodem146301 ----
+press 1, raw edges 1
+press 2, raw edges 2
+press 3, raw edges 3
+press 4, raw edges 4
+press 5, raw edges 5
+press 6, raw edges 6
+press 7, raw edges 7
+press 8, raw edges 8
+press 9, raw edges 9
+press 10, raw edges 10
+press 11, raw edges 11
+press 12, raw edges 12
+press 13, raw edges 13
+press 14, raw edges 14
+press 15, raw edges 15
+press 16, raw edges 16
+press 17, raw edges 17
+press 18, raw edges 18
+press 19, raw edges 19
+press 20, raw edges 20
+press 21, raw edges 21
+press 22, raw edges 22
+press 23, raw edges 23
+press 24, raw edges 24

@@ -1,0 +1,41 @@
+# AP2 - Fault injection: artificial bounce ("scratch test"), debounced firmware
+# Date:      2026-11-07
+# Firmware:  same as ap2_acceptance.log (DEBOUNCE_MS = 10 ms)
+# Procedure: jumper wire on GND scratched across GPIO 15 to create many
+#            bounce edges; afterwards one normal press so the serial line is current
+# Reference: PulseView, CH0 = GPIO 15, 8 MHz, Counter decoder on falling edges
+# Expected:  PulseView count >> raw edges > press
+#
+# Result (filter funnel):
+#   93 falling edges on the pin     (PulseView counter)
+#   29 reached the ISR              (raw edges)  -> 64 masked within 10 ms windows
+#   19 confirmed as press           (press)      -> 10 rejected, pin HIGH after T
+#   -> PASS: bounce filter is effective
+#
+# Limitations:
+#   - Comparison only valid if capture and firmware counter started together.
+#   - raw edges is printed only on the next press; checks after the last
+#     press are not visible in the log.
+#   - Scratching has no "correct" press count; this test proves filtering,
+#     counting accuracy is proven by ap2_acceptance.log.
+
+---- Opened the serial port /dev/tty.usbmodem144301 ----
+press 1, raw edges 2
+press 2, raw edges 2
+press 3, raw edges 3
+press 4, raw edges 4
+press 5, raw edges 6
+press 6, raw edges 8
+press 7, raw edges 10
+press 8, raw edges 12
+press 9, raw edges 14
+press 10, raw edges 15
+press 11, raw edges 16
+press 12, raw edges 18
+press 13, raw edges 20
+press 14, raw edges 22
+press 15, raw edges 24
+press 16, raw edges 26
+press 17, raw edges 27
+press 18, raw edges 28
+press 19, raw edges 29

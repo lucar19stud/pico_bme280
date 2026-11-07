@@ -1,0 +1,42 @@
+# AP2 - Acceptance test, debounced firmware (variant B: edge -> verify level after T)
+# Date:      2026-11-07
+# Firmware:  falling-edge IRQ masks itself, alarm after DEBOUNCE_MS = 10 ms reads
+#            the pin level; LOW -> press accepted, HIGH -> rejected (release bounce)
+# Basis for T: measured release bounce ~0.42 ms (PulseView, 8 MHz)
+#            -> window 0.5 ms < T < ~50 ms, T = 10 ms
+# Setup:     button GPIO 15 -> GND, internal pull-up; LED GPIO 14 via 330 R
+# Precondition: Pico reset before test
+#
+# TC1: 20 presses, short and long mixed
+#   Expected: press == 20
+#   Result:   press 20, raw edges 20  -> PASS
+# TC2: hold button for 5 s, then release
+#   Expected: press +1 exactly
+#   Result:   press 21, raw edges 21  -> PASS
+#
+# Coverage note: raw edges == press -> no release bounce occurred in this run,
+#   so the bounce filter was NOT exercised here. See ap2_scratch_test.log.
+# Note: only the final serial lines were recorded; full output not captured.
+
+---- Opened the serial port /dev/tty.usbmodem146301 ----
+press 1, raw edges 1
+press 2, raw edges 2
+press 3, raw edges 3
+press 4, raw edges 4
+press 5, raw edges 5
+press 6, raw edges 6
+press 7, raw edges 7
+press 8, raw edges 8
+press 9, raw edges 9
+press 10, raw edges 10
+press 11, raw edges 11
+press 12, raw edges 12
+press 13, raw edges 13
+press 14, raw edges 14
+press 15, raw edges 15
+press 16, raw edges 16
+press 17, raw edges 17
+press 18, raw edges 18
+press 19, raw edges 19
+press 20, raw edges 20
+press 21, raw edges 21
