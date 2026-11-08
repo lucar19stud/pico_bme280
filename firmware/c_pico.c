@@ -17,41 +17,40 @@ int main()
     gpio_set_function(I2C_SCL, GPIO_FUNC_I2C);
 
     printf("i2C baud: %u Hz\n", baud);
-
+    uint8_t id = 0;
     bme280_t bme = {.i2c = I2C_PORT, .addr = BME280_ADDR_LOW};
+    int err = bme280_check_chip_id(&bme, &id);
+    printf("chip id: 0x%02X  err: %d\n", id, err);
 
-    int err = bme280_read_calib(&bme);
-    printf("read_calib err: %d\n", err);
-    
-    printf("T1 = %u\n", bme.calib.T1);
-    printf("T2 = %d\n", bme.calib.T2);
-    printf("T3 = %d\n", bme.calib.T3);
-
-    printf("P1 = %u\n", bme.calib.P1);
-    printf("P2 = %d\n", bme.calib.P2);
-    printf("P3 = %d\n", bme.calib.P3);
-    printf("P4 = %d\n", bme.calib.P4);
-    printf("P5 = %d\n", bme.calib.P5);
-    printf("P6 = %d\n", bme.calib.P6);
-    printf("P7 = %d\n", bme.calib.P7);
-    printf("P8 = %d\n", bme.calib.P8);
-    printf("P9 = %d\n", bme.calib.P9);
-
-    printf("H1 = %u\n", bme.calib.H1);
-    printf("H2 = %d\n", bme.calib.H2);
-    printf("H3 = %u\n", bme.calib.H3);
-    printf("H4 = %d\n", bme.calib.H4);
-    printf("H5 = %d\n", bme.calib.H5);
-    printf("H6 = %d\n", bme.calib.H6);
-
-    int b[26];
-    while (true) {
-
-        int err = bme280_read_regs(&bme, 0x88, b, 26);
-        printf("calib read err: %d\n", err);
-        for (int i = 0; i < 26; i++) {
-            printf("reg 0x%02X = 0x%02X  (%3u)\n", 0x88 + i, b[i], b[i]);
+    if (err != BME280_OK) {
+        while (true) {
+            printf("ERROR: sensor init failed (chip id 0x%02X, err %d)\n", id, err);
+            sleep_ms(1000);
         }
+    }
+    err = bme280_read_calib(&bme);
+    printf("read_calib err: %d\n", err);
+
+    int32_t adc_T;
+    int32_t adc_P;
+    int32_t adc_H;
+    int32_t T;
+    int32_t P;
+    int32_t H;
+    while (true) {
+        err = bme280_measure_raw(&bme, &adc_T, &adc_P, &adc_H);
+        printf("calib measure err: %d\n", err);
+
+        T = bme280_compensate_T(&bme, adc_T);
+        printf("T = %d.%02d C\n", T / 100, T % 100);
+
+        P = bme280_compensate_P(&bme, adc_P);
+        printf("P = %d.%02d hPa\n", (int)(P/256)/100, (int)(P/256)%100);
+
+        H = bme280_compensate_H(&bme, adc_H);
+        printf("H = %d.%02d %%\n", (int)(H / 1024), (int)((H % 1024) * 100 / 1024));
         sleep_ms(1000);
     }
 }
+
+

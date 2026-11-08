@@ -33,11 +33,17 @@ typedef struct {
     i2c_inst_t *i2c;
     uint8_t addr;
     bme280_calib_t calib;
+    int32_t t_fine;
 } bme280_t;
 
 int bme280_read_regs(const bme280_t *dev, uint8_t reg, uint8_t *buf, size_t len);
 int bme280_check_chip_id(const bme280_t *dev, uint8_t * id_out);
 int bme280_read_calib(bme280_t *dev);
+int bme280_write_reg(const bme280_t *dev, uint8_t reg, uint8_t value);
+int bme280_measure_raw(const bme280_t *dev, int32_t *adc_T, int32_t *adc_P, int32_t *adc_H);
+int32_t bme280_compensate_T(bme280_t *dev, int32_t adc_T);
+int32_t bme280_compensate_P(bme280_t *dev, int32_t adc_P);
+int32_t bme280_compensate_H(bme280_t *dev, int32_t adc_H);
 
 
 
