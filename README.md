@@ -1,5 +1,5 @@
 # Pico BME280 Test System
-**Status:** UART output and capture working. Button interrupt with debouncing done and tested. BME280 driver and tests in progress.
+**Status:** UART output, button interrupt with debouncing and the BME280 driver are done and tested. Python tests in progress.
 
 I wrote this project to get practical experience with C on a microcontroller and with bus protocols
 I had only seen in lectures. A Pico 2 WH reads a BME280 sensor over I2C using my own driver and prints the values over USB/UART.
@@ -11,7 +11,7 @@ I also used a logic analyzer to capture the bus traffic, including the faults an
 | Component | Notes |
 |---|---|
 | Raspberry Pi Pico 2 WH | RP2350 (Cortex-M33), 3.3 V logic |
-| BME280 breakout | I2C, on-board 4.7 kΩ pull-ups |
+| BME280 breakout | I2C, pins labeled VCC/GND/SDA/SCK/ADDR/CS |
 | Logic analyzer | 8 ch, 24 MHz, PulseView/sigrok |
 | Push button, LED, 330 Ω | user input and feedback |
 
@@ -22,10 +22,17 @@ I also used a logic analyzer to capture the bus traffic, including the faults an
 | GPIO 14 (pin 19) | LED → 330 Ω → GND | – |
 | GPIO 15 (pin 20) | push button → GND (internal pull-up) | D0 (during button tests) |
 | GND (pin 3 / 18) | common ground | GND |
-| TODO | BME280 SDA / SCL / 3V3 / GND | |
+| GPIO 4 (pin 6) | BME280 SDA (I2C0) | D0 (during I2C captures) |
+| GPIO 5 (pin 7) | BME280 SCK = SCL (I2C0) | D6 (not D1, see crosstalk) |
+| 3V3 OUT (pin 36) | BME280 VCC and CS (CS high selects I2C) | – |
+| GND (pin 38) | BME280 GND and ADDR (ADDR low → address 0x76) | – |
 
 ## Architecture
-TODO: BME280 → I2C → Pico → UART/USB → Python test → report
+BME280 → I2C (100 kHz) → Pico → USB/UART → Python test → report
+
+The driver (`bme280.c/.h`) does not know the pins. 
+It gets an I2C instance and an address in a handle (`bme280_t`). 
+The board setup (pins, `i2c_init`) stays in `c_pico.c`.
 
 ## Build and Flash
 | Tool | Version |
@@ -70,7 +77,30 @@ One line of the blink output (`Blink count: 69`) decoded in PulseView.
 Raw capture: [uart_blink.sr](docs/captures/1_uart_blink.sr) (open with PulseView)
 
 ### I2C
-TODO
+Chip ID read (register 0xD0) decoded in PulseView, 4 MHz sample rate:
+
+![I2C chip ID read](docs/captures/3_bme280_id.png)
+
+```
+S | 0xEC (0x76 + W) | A | 0xD0 | A | Sr | 0xED (0x76 + R) | A | 0x60 | N | P
+```
+
+- The 7-bit address 0x76 is shifted left by one, the R/W bit is the LSB. That is why the bus shows 0xEC/0xED.
+- Write register address, then repeated start (no stop in between), then read.
+- The master sends NACK after the last byte, so the sensor releases SDA and the master can send the stop.
+
+**Analyzer disturbed the bus (fixed).** With SDA on D0 and SCL on D1, multi-byte reads aborted after the first byte. The master did not ACK and left the bus without a stop. With only one probe connected, everything worked, and extra 5.1 kΩ pull-ups did not help. The cause was crosstalk between the two neighbouring wires in the ribbon cable. With SCL moved to D6, all reads work while capturing.
+
+Full measurement cycle (SDA on D0, SCL on D6):
+
+![Measurement cycle](docs/captures/3_i2c_measure_cycle.png)
+
+```
+F2 ← 01                        ctrl_hum: humidity oversampling x1
+F4 ← 25                        ctrl_meas: T and P oversampling x1, forced mode
+F3 → 04                        status: "measuring" bit is 0 (read too early, see below)
+F7 → 5F A8 00 80 5A 00 61 4C   raw P, T, H
+```
 
 ## Button Interrupt and Debouncing
 A push button on GPIO 15 triggers a falling-edge interrupt. The ISR only sets a `volatile` flag, the main loop does the actual work (count, toggle LED, print).
@@ -115,6 +145,38 @@ During the first two tests no release bounced, so the filter was not really test
 
 Logs: [docs/logs/](docs/logs/)
 
+## BME280 Driver
+1. Chip ID check (0xD0 must be 0x60, a BMP280 would return 0x58)
+2. Read calibration data once: 26 bytes from 0x88, 7 bytes from 0xE1
+3. Start a measurement in forced mode (oversampling x1), wait 10 ms (max. measurement time is 9.3 ms, datasheet appendix 9), then check the status register
+4. Read raw values as one 8-byte burst from 0xF7 so all values come from the same measurement
+5. Compensate with the integer formulas from the datasheet (temperature first, it sets `t_fine` for pressure and humidity)
+
+All functions return error codes (0 = OK, negative = error). I2C calls use timeouts, so a stuck bus gives an error instead of hanging the firmware.
+
+### Calibration data
+Checked by hand against the raw bytes. Watch out for:
+- Little endian: the LSB is at the lower address
+- `dig_T1` and `dig_P1` are unsigned, the other T/P values are signed. A wrong type compiles fine and only gives slightly wrong values.
+- `dig_H4` and `dig_H5` are 12-bit signed values that share register 0xE5. The upper byte has to be read as `int8_t` first, otherwise the sign is lost.
+
+### Results
+| Value | Measured | Plausible range |
+|---|---|---|
+| Temperature | 21.62 °C | room temperature |
+| Pressure | 968.88 hPa | ~950–970 hPa absolute at ~500 m |
+| Humidity | 44.80 %RH | 30–60 %RH indoors |
+
+### Bug found with the analyzer: reading old data
+My first version polled the status register right after starting the measurement. The capture above shows only one status read, and it already says "done". The raw data is read about 1 ms after the trigger, but a measurement takes about 8 ms.
+
+The sensor had not set the "measuring" bit yet. So the loop stopped right away, and I read the result registers while they still held the previous measurement. Every value was one second old. The values looked plausible, so no range check would have found this.
+
+Fix: wait the maximum measurement time first, then check the status as a safety check.
+
+After the fix there is a gap of X ms between starting the measurement (`F4 ← 25`) and the status read. The status read and the data read come after the measurement is done:
+
+![Measurement cycle after fix](docs/captures/3_i2c_measure_cycle_fixed.png)
 ## Test Concept
 TODO
 
@@ -122,6 +184,9 @@ TODO
 | Fault | Expected | Result | Capture |
 |---|---|---|---|
 | Artificial bounce on button pin | bounce edges filtered, ISR calls < edges | 93 edges → 29 ISR → 19 presses | [scratch test](docs/captures/2_button_scratch_test.png) |
+| Wrong I2C address (ADDR to 3V3) | NACK, error code instead of value | err -1, back to 0 after switching back | – |
+| SDA and SCL probes on neighbouring analyzer channels (found by accident) | – | multi-byte reads abort, fixed by moving SCL to D6 | [aborted read](docs/captures/3_i2c_aborted_read.png) |
+| Data read right after measurement trigger (found in capture) | – | values one measurement old, fixed by waiting 10 ms | [measurement cycle](docs/captures/3_i2c_measure_cycle.png) |
 
 
 ## Lessons Learned
@@ -129,3 +194,6 @@ TODO
 The digit '9' (0x39) shows it properly.
 - printf only sends '\n' but the capture shows '0D 0A'. The SDK adds a CR before the LF.
 - At 20 kHz the button bounce was not visible. At 8 MHz it is clearly visible.
+- The logic analyzer is part of the circuit. I spent a long time looking for the bug in my code and in the SDK before I tested without the analyzer. Then I tested each probe alone and found the crosstalk.
+- Hot-plugging the ADDR pin during a transfer can leave the I2C controller stuck (timeout, bus idle). Only a Pico reset fixes it. A recovery on timeout is not implemented yet.
+- Plausible values are not proof. My readings looked fine but were one measurement old. Only the capture showed the timing was wrong.

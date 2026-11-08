@@ -93,6 +93,8 @@ int bme280_measure_raw(const bme280_t *dev, int32_t *adc_T, int32_t *adc_P, int3
     err = bme280_write_reg(dev, 0xF4, 0x25); //001 001 01 = 0x25
     if (err != BME280_OK) return err;
 
+    sleep_ms(10);
+    
     uint8_t out;
     for (int i = 0; i < 21; i++) {
         err = bme280_read_regs(dev, 0xF3, &out, 1);
