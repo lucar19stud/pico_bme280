@@ -11,6 +11,9 @@
 
 #define BME280_REG_CHIP_ID   0xD0
 
+#define BME280_REG_CALIB_TP  0x88   // 0x88..0xA1: T1..T3, P1..P9, (0xA0 unused), H1
+#define BME280_REG_CALIB_H   0xE1   // 0xE1..0xE7: H2..H6
+
 // Driver error codes: 0 = OK, negative = error (never fail silently)
 enum {
     BME280_OK          =  0,
@@ -19,13 +22,23 @@ enum {
     BME280_ERR_CHIP_ID = -3,  // device answered, but is not a BME280
 };
 
+typedef struct {
+    uint16_t T1; int16_t T2, T3;
+    uint16_t P1; int16_t P2, P3, P4, P5, P6, P7, P8, P9;
+    uint8_t  H1; int16_t H2; uint8_t H3; int16_t H4, H5; int8_t H6;
+} bme280_calib_t;
+
 // Device handle: which bus, which address
 typedef struct {
     i2c_inst_t *i2c;
     uint8_t addr;
+    bme280_calib_t calib;
 } bme280_t;
 
 int bme280_read_regs(const bme280_t *dev, uint8_t reg, uint8_t *buf, size_t len);
 int bme280_check_chip_id(const bme280_t *dev, uint8_t * id_out);
+int bme280_read_calib(bme280_t *dev);
+
+
 
 #endif // BME280_H
