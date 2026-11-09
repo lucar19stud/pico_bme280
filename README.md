@@ -1,5 +1,5 @@
 # Pico BME280 Test System
-**Status:** UART output, button interrupt, BME280 driver and the Python test system are done and tested. Fault injection in progress.
+**Status:** All work packages are done: UART, button interrupt, BME280 driver, bus captures, Python test system and fault injection.
 
 I wrote this project to get practical experience with C on a microcontroller and with bus protocols
 I had only seen in lectures. A Pico 2 WH reads a BME280 sensor over I2C using my own driver and prints the values over USB/UART.
@@ -19,16 +19,16 @@ I also used a logic analyzer to capture the bus traffic, including the faults an
 | Pico | Connected to | Analyzer |
 |---|---|---|
 | GPIO 0 (pin 1) | UART TX | D0 |
-| GPIO 14 (pin 19) | LED → 330 Ω → GND | – |
-| GPIO 15 (pin 20) | push button → GND (internal pull-up) | D0 (during button tests) |
+| GPIO 14 (pin 19) | LED -> 330 Ω -> GND | – |
+| GPIO 15 (pin 20) | push button -> GND (internal pull-up) | D0 (during button tests) |
 | GND (pin 3 / 18) | common ground | GND |
 | GPIO 4 (pin 6) | BME280 SDA (I2C0) | D0 (during I2C captures) |
 | GPIO 5 (pin 7) | BME280 SCK = SCL (I2C0) | D6 (not D1, see crosstalk) |
 | 3V3 OUT (pin 36) | BME280 VCC and CS (CS high selects I2C) | – |
-| GND (pin 38) | BME280 GND and ADDR (ADDR low → address 0x76) | – |
+| GND (pin 38) | BME280 GND and ADDR (ADDR low -> address 0x76) | – |
 
 ## Architecture
-BME280 → I2C (100 kHz) → Pico → USB/UART → Python test → report
+BME280 -> I2C (100 kHz) -> Pico -> USB/UART -> Python test -> report
 
 The driver (`bme280.c/.h`) does not know the pins. 
 It gets an I2C instance and an address in a handle (`bme280_t`). 
@@ -90,7 +90,7 @@ One line of the blink output (`Blink count: 69`) decoded in PulseView.
 
 **Observations**
 - Each byte: start bit (low), 8 data bits LSB first, stop bit (high). Line idle: High.
-- Bit order checked on the '9' (0x39 → `1001 1100` on the wire).
+- Bit order checked on the '9' (0x39 -> `1001 1100` on the wire).
 - The line ends with `0D 0A`, although the code only sends `\n`.
 - Measured bit time: 8.50 µs (expected 1/115200 ≈ 8.68 µs). At 2 MHz one sample is 0.5 µs, so the difference is within the measurement resolution.
 
@@ -116,10 +116,10 @@ Full measurement cycle (SDA on D0, SCL on D6):
 ![Measurement cycle](docs/captures/3_i2c_measure_cycle.png)
 
 ```
-F2 ← 01                        ctrl_hum: humidity oversampling x1
-F4 ← 25                        ctrl_meas: T and P oversampling x1, forced mode
-F3 → 04                        status: "measuring" bit is 0 (read too early, see below)
-F7 → 5F A8 00 80 5A 00 61 4C   raw P, T, H
+F2 <- 01                        ctrl_hum: humidity oversampling x1
+F4 <- 25                        ctrl_meas: T and P oversampling x1, forced mode
+F3 -> 04                        status: "measuring" bit is 0 (read too early, see below)
+F7 -> 5F A8 00 80 5A 00 61 4C   raw P, T, H
 ```
 
 ## Button Interrupt and Debouncing
@@ -136,15 +136,15 @@ At 8 MHz the capture shows the problem: the button bounces when it is released, 
 ![Release bounce zoom](docs/captures/2_button_raw_bounce_zoom.png)
 
 - Bounce duration on release: ~0.42 ms
-- 3 short high pulses (~1 µs to ~22 µs), each one ends with a falling edge → 3 false interrupts
+- 3 short high pulses (~1 µs to ~22 µs), each one ends with a falling edge -> 3 false interrupts
 - PulseView counter decoder jumps from 10 to 13 on a single release
 
 ### Debouncing
 A simple time lock after the first edge would not work here. If the button is held longer than the lock time, the release bounce is counted as a new press.
 I implemented a simple debouncing method using a one-shot alarm. The ISR disables the pin interrupt and starts a timer. The callback reads the pin and decides if it was a real press or just a bounce. Then the interrupt is enabled again.
 
-1. Falling edge → ISR disables the pin interrupt and starts a one-shot alarm (T = 10 ms).
-2. Alarm callback reads the pin: LOW = real press, HIGH = release bounce → ignored.
+1. Falling edge -> ISR disables the pin interrupt and starts a one-shot alarm (T = 10 ms).
+2. Alarm callback reads the pin: LOW = real press, HIGH = release bounce -> ignored.
 3. The interrupt is enabled again.
 
 T has to be longer than the bounce and shorter than the shortest real press:
@@ -194,7 +194,7 @@ The sensor had not set the "measuring" bit yet. So the loop stopped right away, 
 
 Fix: wait the maximum measurement time first, then check the status as a safety check.
 
-After the fix there is a gap of 10 ms between starting the measurement (`F4 ← 25`) and the status read. The status read and the data read come after the measurement is done:
+After the fix there is a gap of 10 ms between starting the measurement (`F4 <- 25`) and the status read. The status read and the data read come after the measurement is done:
 
 ![Measurement cycle after fix](docs/captures/3_i2c_measure_cycle_fixed.png)
 
@@ -205,7 +205,7 @@ pytest reads 10 lines from the Pico and checks them. All tests share the same da
 |---|---|---|
 | `test_count` | 10 lines arrived | no output, wrong port |
 | `test_no_errors` | no `ERROR` lines | bus or sensor fault |
-| `test_chip_id` | chip ID is 0x60 in every line | wrong or swapped sensor |
+| `test_chip_id` | chip ID is 0x60 in every `MEAS` line | wrong or swapped sensor |
 | `test_temperature_range` | 10–35 °C | missing calibration (T = 0) |
 | `test_pressure_range` | 900–1050 hPa | wrong type for P1/P2 |
 | `test_humidity_range` | 10–80 %RH | H4/H5 bug |
@@ -217,12 +217,24 @@ The limits are for my indoor setup, not the sensor spec (−40 to 85 °C).
 Each test was checked once by breaking its limit on purpose, to make sure it can actually fail.
 
 ## Fault Injection
-| Fault | Expected | Result | Capture |
+For each fault I wrote down first which tests should fail, then ran pytest and compared. Software faults are switched with `#define FAULT` in `c_pico.c` or by changing one line in the driver.
+
+| Fault | Expected | Result | Report |
 |---|---|---|---|
-| Artificial bounce on button pin | bounce edges filtered, ISR calls < edges | 93 edges → 29 ISR → 19 presses | [scratch test](docs/captures/2_button_scratch_test.png) |
-| Wrong I2C address (ADDR to 3V3) | NACK, error code instead of value | err -1, back to 0 after switching back | – |
-| SDA and SCL probes on neighbouring analyzer channels (found by accident) | – | multi-byte reads abort, fixed by moving SCL to D6 | [aborted read](docs/captures/3_i2c_aborted_read.png) |
-| Data read right after measurement trigger (found in capture) | – | values one measurement old, fixed by waiting 10 ms | [measurement cycle](docs/captures/3_i2c_measure_cycle.png) |
+| Artificial bounce on button pin | bounce edges filtered, ISR calls < edges | 93 edges -> 29 ISR -> 19 presses | [scratch test](docs/captures/2_button_scratch_test.png) |
+| 1: Wrong I2C address (ADDR to 3V3 during the run) | `test_no_errors` fails | 1 failed, 7 passed (first lines were still valid, so value tests passed on them) | [report](tests/reports/fault_1_addr.txt) |
+| 2: Wrong chip ID (software, expected 0x58) | `test_no_errors` fails, value tests skipped | 1 failed, 2 passed, 5 skipped | [report](tests/reports/fault_2_chipid.txt) |
+| 3: Implausible temperature (software, +50 °C) | only `test_temperature_range` fails | 1 failed, 7 passed (72.43 °C) | [report](tests/reports/fault_3_temp.txt) |
+| 4: Measurement never started (write to 0xF4 removed) | only `test_not_frozen` fails | 1 failed, 7 passed | [report](tests/reports/fault_4_frozen.txt) |
+| 5: SDA disconnected for ~3 s during the run, then reconnected | `test_no_errors` fails, `seq` has no gap | 1 failed, 7 passed (MEAS -> ERROR (err −1) -> MEAS, no reset) | [report](tests/reports/fault_5_sda.txt) |
+| Analyzer probes on D0/D1 (found by accident) | – | multi-byte reads abort, bus stays stuck until reset | – |
+| Data read right after trigger (found in capture) | – | values one measurement old, fixed by waiting 10 ms | [capture](docs/captures/3_i2c_measure_cycle.png) |
+| Missing pull-ups | – | not tested, the pull-ups on the module cannot be removed | – |
+
+Fault 4 is the most interesting one: all values are in range, no errors, `seq` is fine, but the sensor does not measure anymore. Only `test_not_frozen` catches it.
+
+The first run of fault 1 showed a bug in the test system: 6 tests failed for one fault, because the value tests also read `ERROR` lines. 
+Now they only check `MEAS` lines and skip if there are none.
 
 
 ## Lessons Learned
@@ -231,5 +243,9 @@ The digit '9' (0x39) shows it properly.
 - printf only sends '\n' but the capture shows '0D 0A'. The SDK adds a CR before the LF.
 - At 20 kHz the button bounce was not visible. At 8 MHz it is clearly visible.
 - The logic analyzer is part of the circuit. I spent a long time looking for the bug in my code and in the SDK before I tested without the analyzer. Then I tested each probe alone and found the crosstalk.
-- Hot-plugging the ADDR pin during a transfer can leave the I2C controller stuck (timeout, bus idle). Only a Pico reset fixes it. A recovery on timeout is not implemented yet.
 - Plausible values are not proof. My readings looked fine but were one measurement old. Only the capture showed the timing was wrong.
+- After a timeout the I2C bus stays stuck until the Pico is reset. 
+Re-initializing the I2C controller did not help, so the sensor probably holds the bus after an aborted read. 
+A bus clear (9 clock pulses on SCL, then a stop) should fix it, but is not implemented. 
+It only happened with the analyzer wired wrong.
+- Fault injection also tests the test system. My first fault run showed that one fault made 6 tests fail.

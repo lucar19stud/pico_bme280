@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="8" time="9.533" timestamp="2026-11-09T21:21:04.201149+01:00" hostname="MacBook-Pro-von-Luca-2.local"><testcase classname="tests.test_bme280" name="test_count" time="9.424" /><testcase classname="tests.test_bme280" name="test_no_errors" time="0.001" /><testcase classname="tests.test_bme280" name="test_chip_id" time="0.002" /><testcase classname="tests.test_bme280" name="test_temperature_range" time="0.002"><failure message="assert (1000 &lt;= 7243 and 7243 &lt;= 3500)">meas = [{'type': 'MEAS', 'seq': 2, 'id': 96, 'err': 0, ...}, {'type': 'MEAS', 'seq': 3, 'id': 96, 'err': 0, ...}, {'type': 'M...0, ...}, {'type': 'MEAS', 'seq': 6, 'id': 96, 'err': 0, ...}, {'type': 'MEAS', 'seq': 7, 'id': 96, 'err': 0, ...}, ...]
+
+    def test_temperature_range(meas):
+        values = meas_only(meas)
+        if not values:
+            pytest.skip("no MEAS lines")
+        for m in values:
+&gt;           assert T_MIN &lt;= m["T"] and m["T"] &lt;= T_MAX
+E           assert (1000 &lt;= 7243 and 7243 &lt;= 3500)
+
+tests/test_bme280.py:32: AssertionError</failure></testcase><testcase classname="tests.test_bme280" name="test_pressure_range" time="0.001" /><testcase classname="tests.test_bme280" name="test_humidity_range" time="0.001" /><testcase classname="tests.test_bme280" name="test_seq_continuous" time="0.001" /><testcase classname="tests.test_bme280" name="test_not_frozen" time="0.001" /></testsuite></testsuites>

@@ -1,0 +1,34 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.5, pytest-9.2.0, pluggy-1.7.0 -- /Users/lucaroger/pico/pico_bme280/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/lucaroger/pico/pico_bme280
+configfile: pytest.ini
+collecting ... collected 8 items
+
+tests/test_bme280.py::test_count PASSED                                  [ 12%]
+tests/test_bme280.py::test_no_errors FAILED                              [ 25%]
+tests/test_bme280.py::test_chip_id PASSED                                [ 37%]
+tests/test_bme280.py::test_temperature_range PASSED                      [ 50%]
+tests/test_bme280.py::test_pressure_range PASSED                         [ 62%]
+tests/test_bme280.py::test_humidity_range PASSED                         [ 75%]
+tests/test_bme280.py::test_seq_continuous PASSED                         [ 87%]
+tests/test_bme280.py::test_not_frozen PASSED                             [100%]
+
+=================================== FAILURES ===================================
+________________________________ test_no_errors ________________________________
+
+meas = [{'type': 'MEAS', 'seq': 82, 'id': 96, 'err': 0, ...}, {'type': 'MEAS', 'seq': 83, 'id': 96, 'err': 0, ...}, {'type': ... -1, 'id': 0}, {'type': 'ERROR', 'seq': 86, 'err': -1, 'id': 0}, {'type': 'ERROR', 'seq': 87, 'err': -1, 'id': 0}, ...]
+
+    def test_no_errors(meas):
+        for m in meas:
+>           assert m["type"] == "MEAS"
+E           AssertionError: assert 'ERROR' == 'MEAS'
+E             
+E             - MEAS
+E             + ERROR
+
+tests/test_bme280.py:18: AssertionError
+- generated xml file: /Users/lucaroger/pico/pico_bme280/tests/reports/fault_1_addr.xml -
+=========================== short test summary info ============================
+FAILED tests/test_bme280.py::test_no_errors - AssertionError: assert 'ERROR' ...
+========================= 1 failed, 7 passed in 10.12s =========================

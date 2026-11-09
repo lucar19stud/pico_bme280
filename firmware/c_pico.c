@@ -7,6 +7,9 @@
 #define I2C_SCL   5
 #define I2C_BAUD  (100 * 1000)   // standard mode: easy to capture with logic analyzer
 
+// Fault injection: 0 = normal operation
+#define FAULT 0
+
 int main()
 {
     stdio_init_all();
@@ -32,6 +35,7 @@ int main()
         int err = bme280_check_chip_id(&bme, &id);
         if (err != BME280_OK) {
             printf("ERROR seq=%u err=%d id=0x%02X\n", (unsigned)seq, err, id);
+            calib_ok = false;
             sleep_ms(1000);
             continue;
         }
@@ -56,6 +60,7 @@ int main()
 
 
         int32_t T = bme280_compensate_T(&bme, adc_T);
+        if (FAULT == 3) T = T + 5000;
         uint32_t P = bme280_compensate_P(&bme, adc_P);
         uint32_t H = bme280_compensate_H(&bme, adc_H);
 

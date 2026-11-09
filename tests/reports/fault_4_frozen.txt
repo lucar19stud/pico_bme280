@@ -1,0 +1,39 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.5, pytest-9.2.0, pluggy-1.7.0 -- /Users/lucaroger/pico/pico_bme280/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/lucaroger/pico/pico_bme280
+configfile: pytest.ini
+collecting ... collected 8 items
+
+tests/test_bme280.py::test_count PASSED                                  [ 12%]
+tests/test_bme280.py::test_no_errors PASSED                              [ 25%]
+tests/test_bme280.py::test_chip_id PASSED                                [ 37%]
+tests/test_bme280.py::test_temperature_range PASSED                      [ 50%]
+tests/test_bme280.py::test_pressure_range PASSED                         [ 62%]
+tests/test_bme280.py::test_humidity_range PASSED                         [ 75%]
+tests/test_bme280.py::test_seq_continuous PASSED                         [ 87%]
+tests/test_bme280.py::test_not_frozen FAILED                             [100%]
+
+=================================== FAILURES ===================================
+_______________________________ test_not_frozen ________________________________
+
+meas = [{'type': 'MEAS', 'seq': 59, 'id': 96, 'err': 0, ...}, {'type': 'MEAS', 'seq': 60, 'id': 96, 'err': 0, ...}, {'type': ... ...}, {'type': 'MEAS', 'seq': 63, 'id': 96, 'err': 0, ...}, {'type': 'MEAS', 'seq': 64, 'id': 96, 'err': 0, ...}, ...]
+
+    def test_not_frozen(meas):
+        values = meas_only(meas)
+        if not values:
+            pytest.skip("no MEAS lines")
+        same_in_a_row = 0
+        for i in range(len(values) - 1):
+            if values[i + 1]["adcP"] == values[i]["adcP"]:
+                same_in_a_row += 1
+            else:
+                same_in_a_row = 0
+>           assert same_in_a_row < 3
+E           assert 3 < 3
+
+tests/test_bme280.py:62: AssertionError
+- generated xml file: /Users/lucaroger/pico/pico_bme280/tests/reports/fault_4_frozen.xml -
+=========================== short test summary info ============================
+FAILED tests/test_bme280.py::test_not_frozen - assert 3 < 3
+========================= 1 failed, 7 passed in 9.67s ==========================

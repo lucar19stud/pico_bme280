@@ -98,11 +98,7 @@ int bme280_measure_raw(const bme280_t *dev, int32_t *adc_T, int32_t *adc_P, int3
     uint8_t out;
     for (int i = 0; i < 21; i++) {
         err = bme280_read_regs(dev, 0xF3, &out, 1);
-        if (err != BME280_OK) {
-            printf("measure err: %d\n", err);
-            sleep_ms(1000);
-            continue;   
-        }
+        if (err != BME280_OK) return err;
 
         if ((out & 0x08) == 0) {
             break;

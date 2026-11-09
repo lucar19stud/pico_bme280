@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="8" time="9.677" timestamp="2026-11-09T21:20:25.006222+01:00" hostname="MacBook-Pro-von-Luca-2.local"><testcase classname="tests.test_bme280" name="test_count" time="9.568" /><testcase classname="tests.test_bme280" name="test_no_errors" time="0.001" /><testcase classname="tests.test_bme280" name="test_chip_id" time="0.001" /><testcase classname="tests.test_bme280" name="test_temperature_range" time="0.001" /><testcase classname="tests.test_bme280" name="test_pressure_range" time="0.001" /><testcase classname="tests.test_bme280" name="test_humidity_range" time="0.000" /><testcase classname="tests.test_bme280" name="test_seq_continuous" time="0.000" /><testcase classname="tests.test_bme280" name="test_not_frozen" time="0.001"><failure message="assert 3 &lt; 3">meas = [{'type': 'MEAS', 'seq': 59, 'id': 96, 'err': 0, ...}, {'type': 'MEAS', 'seq': 60, 'id': 96, 'err': 0, ...}, {'type': ... ...}, {'type': 'MEAS', 'seq': 63, 'id': 96, 'err': 0, ...}, {'type': 'MEAS', 'seq': 64, 'id': 96, 'err': 0, ...}, ...]
+
+    def test_not_frozen(meas):
+        values = meas_only(meas)
+        if not values:
+            pytest.skip("no MEAS lines")
+        same_in_a_row = 0
+        for i in range(len(values) - 1):
+            if values[i + 1]["adcP"] == values[i]["adcP"]:
+                same_in_a_row += 1
+            else:
+                same_in_a_row = 0
+&gt;           assert same_in_a_row &lt; 3
+E           assert 3 &lt; 3
+
+tests/test_bme280.py:62: AssertionError</failure></testcase></testsuite></testsuites>

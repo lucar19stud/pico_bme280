@@ -14,7 +14,7 @@
 #define BME280_REG_CALIB_TP  0x88   // 0x88..0xA1: T1..T3, P1..P9, (0xA0 unused), H1
 #define BME280_REG_CALIB_H   0xE1   // 0xE1..0xE7: H2..H6
 
-// Driver error codes: 0 = OK, negative = error (never fail silently)
+// Driver error codes: 0 = OK, negative = error
 enum {
     BME280_OK          =  0,
     BME280_ERR_NACK    = -1,  // device did not acknowledge (wrong address, not connected)
@@ -44,7 +44,5 @@ int bme280_measure_raw(const bme280_t *dev, int32_t *adc_T, int32_t *adc_P, int3
 int32_t bme280_compensate_T(bme280_t *dev, int32_t adc_T);
 int32_t bme280_compensate_P(bme280_t *dev, int32_t adc_P);
 int32_t bme280_compensate_H(bme280_t *dev, int32_t adc_H);
-
-
 
 #endif // BME280_H

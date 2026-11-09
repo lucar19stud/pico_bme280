@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="5" tests="8" time="9.164" timestamp="2026-11-09T21:22:02.319452+01:00" hostname="MacBook-Pro-von-Luca-2.local"><testcase classname="tests.test_bme280" name="test_count" time="9.064" /><testcase classname="tests.test_bme280" name="test_no_errors" time="0.001"><failure message="AssertionError: assert 'ERROR' == 'MEAS'&#10;  &#10;  - MEAS&#10;  + ERROR">meas = [{'type': 'ERROR', 'seq': 13, 'err': -3, 'id': 96}, {'type': 'ERROR', 'seq': 14, 'err': -3, 'id': 96}, {'type': 'ERROR..., 'id': 96}, {'type': 'ERROR', 'seq': 17, 'err': -3, 'id': 96}, {'type': 'ERROR', 'seq': 18, 'err': -3, 'id': 96}, ...]
+
+    def test_no_errors(meas):
+        for m in meas:
+&gt;           assert m["type"] == "MEAS"
+E           AssertionError: assert 'ERROR' == 'MEAS'
+E             
+E             - MEAS
+E             + ERROR
+
+tests/test_bme280.py:18: AssertionError</failure></testcase><testcase classname="tests.test_bme280" name="test_chip_id" time="0.000"><skipped type="pytest.skip" message="no MEAS lines">/Users/lucaroger/pico/pico_bme280/tests/test_bme280.py:23: no MEAS lines</skipped></testcase><testcase classname="tests.test_bme280" name="test_temperature_range" time="0.000"><skipped type="pytest.skip" message="no MEAS lines">/Users/lucaroger/pico/pico_bme280/tests/test_bme280.py:30: no MEAS lines</skipped></testcase><testcase classname="tests.test_bme280" name="test_pressure_range" time="0.000"><skipped type="pytest.skip" message="no MEAS lines">/Users/lucaroger/pico/pico_bme280/tests/test_bme280.py:37: no MEAS lines</skipped></testcase><testcase classname="tests.test_bme280" name="test_humidity_range" time="0.000"><skipped type="pytest.skip" message="no MEAS lines">/Users/lucaroger/pico/pico_bme280/tests/test_bme280.py:44: no MEAS lines</skipped></testcase><testcase classname="tests.test_bme280" name="test_seq_continuous" time="0.001" /><testcase classname="tests.test_bme280" name="test_not_frozen" time="0.000"><skipped type="pytest.skip" message="no MEAS lines">/Users/lucaroger/pico/pico_bme280/tests/test_bme280.py:55: no MEAS lines</skipped></testcase></testsuite></testsuites>
