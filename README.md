@@ -1,5 +1,5 @@
 # Pico BME280 Test System
-**Status:** UART output, button interrupt with debouncing and the BME280 driver are done and tested. Python tests in progress.
+**Status:** UART output, button interrupt, BME280 driver and the Python test system are done and tested. Fault injection in progress.
 
 I wrote this project to get practical experience with C on a microcontroller and with bus protocols
 I had only seen in lectures. A Pico 2 WH reads a BME280 sensor over I2C using my own driver and prints the values over USB/UART.
@@ -34,6 +34,15 @@ The driver (`bme280.c/.h`) does not know the pins.
 It gets an I2C instance and an address in a handle (`bme280_t`). 
 The board setup (pins, `i2c_init`) stays in `c_pico.c`.
 
+The firmware prints one line per measurement:
+
+```
+MEAS seq=12 id=0x60 err=0 T=2162 P=96888 H=4480 adcT=525728 adcP=391808 adcH=24908
+ERROR seq=13 err=-1
+```
+
+T in 0.01 °C, P in Pa, H in 0.01 %RH. Integers instead of floats, so nothing gets lost when parsing. `seq` counts every loop, also on errors.
+
 ## Build and Flash
 | Tool | Version |
 |---|---|
@@ -49,6 +58,17 @@ Target board: `pico2_w`
 3. Hold BOOTSEL, plug in USB, and copy the `.uf2` to the `RP2350` drive. The board reboots and starts the program.
 
 The current state is always in `firmware/c_pico.c`. Earlier working steps are kept in `firmware/experiments/` for reference. They are not part of the build.
+
+### Run the tests
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r tests/requirements.txt
+pytest tests --port /dev/tty.usbmodem144201
+```
+
+The port name depends on the USB socket (`ls /dev/tty.usbmodem*`). The report is written to `tests/reports/report.xml`.
+
 
 ## Bus Analysis
 ### UART
@@ -174,11 +194,27 @@ The sensor had not set the "measuring" bit yet. So the loop stopped right away, 
 
 Fix: wait the maximum measurement time first, then check the status as a safety check.
 
-After the fix there is a gap of X ms between starting the measurement (`F4 ← 25`) and the status read. The status read and the data read come after the measurement is done:
+After the fix there is a gap of 10 ms between starting the measurement (`F4 ← 25`) and the status read. The status read and the data read come after the measurement is done:
 
 ![Measurement cycle after fix](docs/captures/3_i2c_measure_cycle_fixed.png)
+
 ## Test Concept
-TODO
+pytest reads 10 lines from the Pico and checks them. All tests share the same data, so one run takes about 10 s.
+
+| Test | Checks | Finds e.g. |
+|---|---|---|
+| `test_count` | 10 lines arrived | no output, wrong port |
+| `test_no_errors` | no `ERROR` lines | bus or sensor fault |
+| `test_chip_id` | chip ID is 0x60 in every line | wrong or swapped sensor |
+| `test_temperature_range` | 10–35 °C | missing calibration (T = 0) |
+| `test_pressure_range` | 900–1050 hPa | wrong type for P1/P2 |
+| `test_humidity_range` | 10–80 %RH | H4/H5 bug |
+| `test_seq_continuous` | `seq` goes up by 1 | lost lines, firmware reset |
+| `test_not_frozen` | raw pressure not the same 4 times in a row | measurement never started |
+
+The limits are for my indoor setup, not the sensor spec (−40 to 85 °C). 
+
+Each test was checked once by breaking its limit on purpose, to make sure it can actually fail.
 
 ## Fault Injection
 | Fault | Expected | Result | Capture |
